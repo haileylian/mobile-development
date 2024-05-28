@@ -8,79 +8,153 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const LoginPage(title: 'Flutter Demo Login Page'),
+      home: MainPage(),
     );
   }
 }
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, required this.title});
-
-  final String title;
-
-
+class MainPage extends StatefulWidget {
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  _MainPageState createState() => _MainPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _loginController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  String imageSource = 'images/question-mark.png'; // Placeholder image link
+class _MainPageState extends State<MainPage> {
+  int _selectedIndex = 0;
+
+  static List<Widget> _widgetOptions = <Widget>[
+    BrowseCategories(),
+    Text('Search Page'),
+    Text('Favorites Page'),
+    Text('Profile Page'),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+      appBar: AppBar(title: Text('Browse Categories')),
+      body: _widgetOptions.elementAt(_selectedIndex),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'Search',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite),
+            label: 'Favorites',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.amber[800],
+        unselectedItemColor: Colors.grey,
+        onTap: _onItemTapped,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            TextField(
-              controller: _loginController,
-              decoration: InputDecoration(
-                labelText: 'Login',
-              ),
+    );
+  }
+}
+
+class BrowseCategories extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Center(
+            child: Text(
+              'BROWSE CATEGORIES',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(
-                labelText: 'Password',
-              ),
-              obscureText: true,
+          ),
+          Center(
+            child: Text(
+              'Not sure about exactly which recipe you\'re looking for? Do a search, or dive into our most popular categories.',
+              textAlign: TextAlign.center,
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                String enteredPassword = _passwordController.text;
-                setState(() {
-                  if (enteredPassword == 'QWERTY123') {
-                    imageSource = 'images/idea.png'; // Image for correct password
-                  } else {
-                    imageSource = 'images/stop.png'; // Image for incorrect password
-                  }
-                });
-              },
-              child: Text('Login'),
-            ),
-            SizedBox(height: 20),
-            Image.asset(
-              imageSource,
-              width: 300,
-              height: 300,
-            ),
-          ],
+          ),
+          CategoryRow(
+            title: 'BY MEAT',
+            images: ['beef-image.jpeg', 'chicken.png', 'pork.png', 'seafood.jpeg'],
+            labels: ['BEEF', 'CHICKEN', 'PORK', 'SEAFOOD'],
+            textAlignment: Alignment.center,
+          ),
+          CategoryRow(
+            title: 'BY COURSE',
+            images: ['main-foods.jpeg', 'salad.jpeg', 'Side-Dishes.png', 'crockpot.png'],
+            labels: ['Main Dishes', 'Salad Recipes', 'Side Dishes', 'Crockpot'],
+            textAlignment: Alignment.bottomCenter,
+          ),
+          CategoryRow(
+            title: 'BY DESSERT',
+            images: ['ice-cream.jpg', 'brownies.jpg', 'pies.jpg', 'cookies.jpg'],
+            labels: ['Ice Cream', 'Brownies', 'Pies', 'Cookies'],
+            textAlignment: Alignment.bottomCenter,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CategoryRow extends StatelessWidget {
+  final String title;
+  final List<String> images;
+  final List<String> labels;
+  final Alignment textAlignment;
+
+  CategoryRow({required this.title, required this.images, required this.labels, required this.textAlignment});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Center(
+          child: Text(
+            title,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
         ),
-      ),
+        SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: List.generate(images.length, (index) {
+            return Stack(
+              alignment: textAlignment,
+              children: [
+                CircleAvatar(
+                  backgroundImage: AssetImage('images/${images[index]}'),
+                  radius: 40,
+                ),
+                Positioned(
+                  bottom: textAlignment == Alignment.bottomCenter ? 8 : null,
+                  child: Text(
+                    labels[index],
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+        ),
+      ],
     );
   }
 }
