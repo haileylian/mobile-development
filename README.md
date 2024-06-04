@@ -1,6 +1,6 @@
-# test_flutter
+# Mobile development 
 
-A new Flutter project.
+Develop mobile application using dart and flutter
 
 ## Getting Started
 
