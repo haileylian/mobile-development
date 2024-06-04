@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const LoginPage(title: 'Flutter Demo Login Page'),
-    );
-  }
+  const MyApp({super.key});
+
+// This widget is the root of your application.
+@override
+Widget build(BuildContext context) {
+  return MaterialApp(
+    title: 'Flutter Demo',
+    theme: ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+      useMaterial3: true,
+    ),
+    home: const LoginPage(title: 'Flutter Demo Login Page'),
+  );
+}
 }
 
 class LoginPage extends StatefulWidget {
@@ -23,10 +26,10 @@ class LoginPage extends StatefulWidget {
 
   final String title;
 
-
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
+
 
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _loginController = TextEditingController();
@@ -64,9 +67,9 @@ class _LoginPageState extends State<LoginPage> {
                 String enteredPassword = _passwordController.text;
                 setState(() {
                   if (enteredPassword == 'QWERTY123') {
-                    imageSource = 'images/idea.png'; // Image for correct password
+                    imageSource = 'images/idea.png';
                   } else {
-                    imageSource = 'images/stop.png'; // Image for incorrect password
+                    imageSource = 'images/stop.png';
                   }
                 });
               },
