@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:encrypted_shared_preferences/encrypted_shared_preferences.dart';
+import 'ProfilePage.dart';
+import 'UserRepository.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const LoginPage(title: 'Flutter Demo Login Page'),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginPage(title: 'Flutter Demo Login Page'),
+        '/profile': (context) => const ProfilePage(),
+      },
     );
   }
 }
@@ -23,7 +33,6 @@ class LoginPage extends StatefulWidget {
 
   final String title;
 
-
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
@@ -31,7 +40,95 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _loginController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final EncryptedSharedPreferences _preferences = EncryptedSharedPreferences();
   String imageSource = 'images/question-mark.png'; // Placeholder image link
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedData();
+  }
+
+  Future<void> _loadSavedData() async {
+    try {
+      String? savedUsername = await _preferences.getString('username');
+      String? savedPassword = await _preferences.getString('password');
+      if (savedUsername != null && savedPassword != null) {
+        setState(() {
+          _loginController.text = savedUsername;
+          _passwordController.text = savedPassword;
+        });
+        _showSnackbarWithAction();
+      }
+    } catch (e) {
+      print('Error loading saved data: $e');
+    }
+  }
+
+  void _showSnackbarWithAction() {
+    final snackBar = SnackBar(
+      content: Text('Previous login data loaded'),
+      action: SnackBarAction(
+        label: 'Clear Saved Data',
+        onPressed: _clearSavedData,
+      ),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  Future<void> _clearSavedData() async {
+    await _preferences.clear();
+    _loginController.clear();
+    _passwordController.clear();
+  }
+
+  Future<void> _saveData(String username, String password) async {
+    await _preferences.setString('username', username);
+    await _preferences.setString('password', password);
+  }
+
+  Future<void> _showSaveDialog() async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Save Login Data'),
+          content: Text('Would you like to save your username and password for next time?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                _clearSavedData();
+                Navigator.of(context).pop();
+              },
+              child: Text('No'),
+            ),
+            TextButton(
+              onPressed: () {
+                _saveData(_loginController.text, _passwordController.text);
+                Navigator.of(context).pop();
+              },
+              child: Text('Yes'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _login() {
+    String enteredPassword = _passwordController.text;
+    if (enteredPassword == 'QWERTY123') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Welcome Back, ${_loginController.text}')),
+      );
+      Navigator.pushNamed(context, '/profile');
+    } else {
+      setState(() {
+        imageSource = 'images/stop.png';
+      });
+      _showSaveDialog();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,16 +157,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                String enteredPassword = _passwordController.text;
-                setState(() {
-                  if (enteredPassword == 'QWERTY123') {
-                    imageSource = 'images/idea.png'; // Image for correct password
-                  } else {
-                    imageSource = 'images/stop.png'; // Image for incorrect password
-                  }
-                });
-              },
+              onPressed: _login,
               child: Text('Login'),
             ),
             SizedBox(height: 20),
