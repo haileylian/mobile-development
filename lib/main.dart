@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:encrypted_shared_preferences/encrypted_shared_preferences.dart';
-import 'ProfilePage.dart';
-import 'UserRepository.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,92 +16,56 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LoginPage(title: 'Flutter Demo Login Page'),
-        '/profile': (context) => const ProfilePage(),
-      },
+      home: const ToDoPage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, required this.title});
+class ToDoPage extends StatefulWidget {
+  const ToDoPage({super.key, required this.title});
 
   final String title;
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ToDoPage> createState() => _ToDoPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _loginController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final EncryptedSharedPreferences _preferences = EncryptedSharedPreferences();
-  String imageSource = 'images/question-mark.png'; // Placeholder image link
+class _ToDoPageState extends State<ToDoPage> {
+  final TextEditingController _todoController = TextEditingController();
+  final List<String> _todoItems = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadSavedData();
-  }
-
-  Future<void> _loadSavedData() async {
-    try {
-      String? savedUsername = await _preferences.getString('username');
-      String? savedPassword = await _preferences.getString('password');
-      if (savedUsername != null && savedPassword != null) {
-        setState(() {
-          _loginController.text = savedUsername;
-          _passwordController.text = savedPassword;
-        });
-        _showSnackbarWithAction();
+  void _addTodoItem() {
+    setState(() {
+      if (_todoController.text.isNotEmpty) {
+        _todoItems.add(_todoController.text);
+        _todoController.clear();
       }
-    } catch (e) {
-      print('Error loading saved data: $e');
-    }
+    });
   }
 
-  void _showSnackbarWithAction() {
-    final snackBar = SnackBar(
-      content: Text('Previous login data loaded'),
-      action: SnackBarAction(
-        label: 'Clear Saved Data',
-        onPressed: _clearSavedData,
-      ),
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  void _removeTodoItem(int index) {
+    setState(() {
+      _todoItems.removeAt(index);
+    });
   }
 
-  Future<void> _clearSavedData() async {
-    await _preferences.clear();
-    _loginController.clear();
-    _passwordController.clear();
-  }
-
-  Future<void> _saveData(String username, String password) async {
-    await _preferences.setString('username', username);
-    await _preferences.setString('password', password);
-  }
-
-  Future<void> _showSaveDialog() async {
+  Future<void> _showDeleteDialog(int index) async {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Save Login Data'),
-          content: Text('Would you like to save your username and password for next time?'),
+          title: Text('Delete Todo Item'),
+          content: Text('Are you sure you want to delete this item?'),
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                _clearSavedData();
                 Navigator.of(context).pop();
               },
               child: Text('No'),
             ),
             TextButton(
               onPressed: () {
-                _saveData(_loginController.text, _passwordController.text);
+                _removeTodoItem(index);
                 Navigator.of(context).pop();
               },
               child: Text('Yes'),
@@ -113,21 +74,6 @@ class _LoginPageState extends State<LoginPage> {
         );
       },
     );
-  }
-
-  void _login() {
-    String enteredPassword = _passwordController.text;
-    if (enteredPassword == 'QWERTY123') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Welcome Back, ${_loginController.text}')),
-      );
-      Navigator.pushNamed(context, '/profile');
-    } else {
-      setState(() {
-        imageSource = 'images/stop.png';
-      });
-      _showSaveDialog();
-    }
   }
 
   @override
@@ -140,31 +86,46 @@ class _LoginPageState extends State<LoginPage> {
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            TextField(
-              controller: _loginController,
-              decoration: InputDecoration(
-                labelText: 'Login',
-              ),
-            ),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(
-                labelText: 'Password',
-              ),
-              obscureText: true,
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    controller: _todoController,
+                    decoration: InputDecoration(
+                      labelText: 'Enter a todo item',
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: _addTodoItem,
+                  child: Text('Add'),
+                ),
+              ],
             ),
             SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _login,
-              child: Text('Login'),
-            ),
-            SizedBox(height: 20),
-            Image.asset(
-              imageSource,
-              width: 300,
-              height: 300,
+            Expanded(
+              child: _todoItems.isEmpty
+                  ? Center(child: Text('There are no items in the list'))
+                  : ListView.builder(
+                itemCount: _todoItems.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onLongPress: () => _showDeleteDialog(index),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          Text('Row number: $index'),
+                          Text(_todoItems[index]),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
