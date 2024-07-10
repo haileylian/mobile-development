@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'database.dart';
+import 'todo_item.dart';
+import 'todo_dao.dart';
 
 void main() {
   runApp(const MyApp());
@@ -32,24 +35,50 @@ class ToDoPage extends StatefulWidget {
 
 class _ToDoPageState extends State<ToDoPage> {
   final TextEditingController _todoController = TextEditingController();
-  final List<String> _todoItems = [];
+  late AppDatabase database;
+  late ToDoDao todoDao;
+  List<ToDoItem> _todoItems = [];
 
-  void _addTodoItem() {
-    setState(() {
-      if (_todoController.text.isNotEmpty) {
-        _todoItems.add(_todoController.text);
-        _todoController.clear();
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    _initializeDatabase();
   }
 
-  void _removeTodoItem(int index) {
-    setState(() {
-      _todoItems.removeAt(index);
-    });
+  Future<void> _initializeDatabase() async {
+    database = await $FloorAppDatabase.databaseBuilder('app_database.db').build();
+    todoDao = database.todoDao;
+    print('Database initialized');
+    _loadTodos();
   }
 
-  Future<void> _showDeleteDialog(int index) async {
+  Future<void> _loadTodos() async {
+    final todos = await todoDao.findAllToDos();
+    setState(() {
+      _todoItems = todos;
+    });
+    print('Todos loaded: $_todoItems');
+  }
+
+  Future<void> _addTodoItem() async {
+    if (_todoController.text.isNotEmpty) {
+      final todo = ToDoItem(task: _todoController.text);
+      await todoDao.insertToDoItem(todo);
+      print('Todo added: $todo');
+      _todoController.clear();
+      _loadTodos();
+    } else {
+      print('Text field is empty');
+    }
+  }
+
+  Future<void> _removeTodoItem(ToDoItem todo) async {
+    await todoDao.deleteToDoItem(todo);
+    print('Todo removed: $todo');
+    _loadTodos();
+  }
+
+  Future<void> _showDeleteDialog(ToDoItem todo) async {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -65,7 +94,7 @@ class _ToDoPageState extends State<ToDoPage> {
             ),
             TextButton(
               onPressed: () {
-                _removeTodoItem(index);
+                _removeTodoItem(todo);
                 Navigator.of(context).pop();
               },
               child: Text('Yes'),
@@ -111,15 +140,16 @@ class _ToDoPageState extends State<ToDoPage> {
                   : ListView.builder(
                 itemCount: _todoItems.length,
                 itemBuilder: (context, index) {
+                  final todo = _todoItems[index];
                   return GestureDetector(
-                    onLongPress: () => _showDeleteDialog(index),
+                    onLongPress: () => _showDeleteDialog(todo),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: <Widget>[
                           Text('Row number: $index'),
-                          Text(_todoItems[index]),
+                          Text(todo.task),
                         ],
                       ),
                     ),
