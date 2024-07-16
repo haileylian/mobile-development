@@ -3,12 +3,16 @@ import 'database.dart';
 import 'todo_item.dart';
 import 'todo_dao.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final database = await $FloorAppDatabase.databaseBuilder('app_database.db').build();
+  runApp(MyApp(database: database));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AppDatabase database;
+
+  const MyApp({Key? key, required this.database}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -19,15 +23,16 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const ToDoPage(title: 'Flutter Demo Home Page'),
+      home: ToDoPage(title: 'Flutter Demo Home Page', database: database),
     );
   }
 }
 
 class ToDoPage extends StatefulWidget {
-  const ToDoPage({super.key, required this.title});
-
   final String title;
+  final AppDatabase database;
+
+  const ToDoPage({Key? key, required this.title, required this.database}) : super(key: key);
 
   @override
   State<ToDoPage> createState() => _ToDoPageState();
@@ -35,20 +40,14 @@ class ToDoPage extends StatefulWidget {
 
 class _ToDoPageState extends State<ToDoPage> {
   final TextEditingController _todoController = TextEditingController();
-  late AppDatabase database;
   late ToDoDao todoDao;
   List<ToDoItem> _todoItems = [];
+  ToDoItem? _selectedItem;
 
   @override
   void initState() {
     super.initState();
-    _initializeDatabase();
-  }
-
-  Future<void> _initializeDatabase() async {
-    database = await $FloorAppDatabase.databaseBuilder('app_database.db').build();
-    todoDao = database.todoDao;
-    print('Database initialized');
+    todoDao = widget.database.todoDao;
     _loadTodos();
   }
 
@@ -57,14 +56,12 @@ class _ToDoPageState extends State<ToDoPage> {
     setState(() {
       _todoItems = todos;
     });
-    print('Todos loaded: $_todoItems');
   }
 
   Future<void> _addTodoItem() async {
     if (_todoController.text.isNotEmpty) {
       final todo = ToDoItem(task: _todoController.text);
       await todoDao.insertToDoItem(todo);
-      print('Todo added: $todo');
       _todoController.clear();
       _loadTodos();
     } else {
@@ -74,7 +71,7 @@ class _ToDoPageState extends State<ToDoPage> {
 
   Future<void> _removeTodoItem(ToDoItem todo) async {
     await todoDao.deleteToDoItem(todo);
-    print('Todo removed: $todo');
+    _selectedItem = null;
     _loadTodos();
   }
 
@@ -105,61 +102,102 @@ class _ToDoPageState extends State<ToDoPage> {
     );
   }
 
+  void _onItemTap(ToDoItem item) {
+    setState(() {
+      _selectedItem = item;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: TextField(
-                    controller: _todoController,
-                    decoration: InputDecoration(
-                      labelText: 'Enter a todo item',
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: _addTodoItem,
-                  child: Text('Add'),
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isLargeScreen = constraints.maxWidth > 600;
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            title: Text(widget.title),
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: isLargeScreen
+                ? Row(
+              children: [
+                Expanded(child: _buildTodoList()),
+                VerticalDivider(),
+                if (_selectedItem != null)
+                  Expanded(child: _buildDetailsPage(_selectedItem!)),
               ],
-            ),
-            SizedBox(height: 20),
+            )
+                : _selectedItem == null
+                ? _buildTodoList()
+                : _buildDetailsPage(_selectedItem!),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTodoList() {
+    return Column(
+      children: <Widget>[
+        Row(
+          children: <Widget>[
             Expanded(
-              child: _todoItems.isEmpty
-                  ? Center(child: Text('There are no items in the list'))
-                  : ListView.builder(
-                itemCount: _todoItems.length,
-                itemBuilder: (context, index) {
-                  final todo = _todoItems[index];
-                  return GestureDetector(
-                    onLongPress: () => _showDeleteDialog(todo),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: <Widget>[
-                          Text('Row number: $index'),
-                          Text(todo.task),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+              child: TextField(
+                controller: _todoController,
+                decoration: InputDecoration(
+                  labelText: 'Enter a todo item',
+                ),
               ),
+            ),
+            SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: _addTodoItem,
+              child: Text('Add'),
             ),
           ],
         ),
-      ),
+        SizedBox(height: 20),
+        Expanded(
+          child: _todoItems.isEmpty
+              ? Center(child: Text('There are no items in the list'))
+              : ListView.builder(
+            itemCount: _todoItems.length,
+            itemBuilder: (context, index) {
+              final todo = _todoItems[index];
+              return GestureDetector(
+                onTap: () => _onItemTap(todo),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: <Widget>[
+                      Text('Row number: ${index + 1}'),
+                      Text(todo.task),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailsPage(ToDoItem item) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Item Name: ${item.task}', style: TextStyle(fontSize: 20)),
+        Text('Database ID: ${item.id}', style: TextStyle(fontSize: 16)),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: () => _removeTodoItem(item),
+          child: Text('Delete'),
+        ),
+      ],
     );
   }
 }
